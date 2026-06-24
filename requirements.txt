@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+redis
+rq
+python-multipart
+pydantic-settings
+alembic
+pandas
+google-generativeai
