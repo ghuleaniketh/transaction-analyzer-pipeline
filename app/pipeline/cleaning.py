@@ -1,4 +1,5 @@
 from datetime import datetime
+import uuid
 
 
 def normalize_date(raw_date: str) -> str | None:
@@ -85,3 +86,16 @@ def remove_exact_duplicates(rows: list[dict]) -> list[dict]:
             result.append(row)
 
     return result
+
+
+def fill_missing_txn_id(rows: list[dict]) -> list[dict]:
+    """
+    Generates a synthetic txn_id for any row where the source txn_id was blank,
+    so every row has a stable identifier to map results back to throughout
+    the rest of the pipeline (anomaly detection, LLM classification, storage).
+    Synthetic IDs are prefixed so they're visually distinguishable from real ones.
+    """
+    for row in rows:
+        if not row.get("txn_id") or not row["txn_id"].strip():
+            row["txn_id"] = f"GENERATED-{uuid.uuid4().hex[:8].upper()}"
+    return rows
