@@ -22,8 +22,6 @@ def classify_batch(rows: list[dict]) -> dict[str, str]:
     if not rows:
         return {}
 
-    # Build a simple numbered list the model can reference unambiguously,
-    # since txn_id can be blank for a few rows.
     items = [
         {"index": i, "merchant": row.get("merchant", ""), "amount": row.get("amount")}
         for i, row in enumerate(rows)
@@ -43,7 +41,6 @@ No other text, no markdown formatting, just the raw JSON array.
     response = model.generate_content(prompt)
 
     raw_text = response.text.strip()
-    # Defensive: strip markdown code fences if the model adds them despite instructions.
     if raw_text.startswith("```"):
         raw_text = raw_text.strip("`").lstrip("json").strip()
 
