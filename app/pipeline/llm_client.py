@@ -1,9 +1,9 @@
 import json
-import google.generativeai as genai
+from google import genai
 
 from app.config import settings
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
+client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 VALID_CATEGORIES = [
     "Food", "Shopping", "Travel", "Transport",
@@ -33,12 +33,16 @@ def classify_batch(rows: list[dict]) -> dict[str, str]:
 Transactions (JSON array, each with an "index"):
 {json.dumps(items)}
 
-Respond with ONLY a JSON array of objects like: [{{"index": 0, "category": "Food"}}, ...]
+Respond with ONLY a JSON array of objects, one per transaction, covering EVERY index
+from 0 to {len(items) - 1} with no gaps and no omissions, like:
+[{{"index": 0, "category": "Food"}}, ...]
 No other text, no markdown formatting, just the raw JSON array.
 """
 
-    model = genai.GenerativeModel(settings.GEMINI_MODEL)
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model=settings.GEMINI_MODEL,
+        contents=prompt,
+    )
 
     raw_text = response.text.strip()
     if raw_text.startswith("```"):
