@@ -7,10 +7,16 @@ from app.database import get_db
 from app.models.job import Job
 from app.models.transaction import Transaction
 from app.models.job_summary import JobSummary
-from app.schemas.job import JobUploadResponse
+from typing import Optional
+
+from app.schemas.job import (
+    JobUploadResponse,
+    JobStatusResponse,
+    JobResultsResponse,
+    JobListItem,
+)
 from app.redis_conn import queue
 from app.workers.tasks import process_job
-from app.schemas.job import JobUploadResponse, JobStatusResponse
 
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
@@ -52,6 +58,25 @@ async def upload_csv(
     # 5. Return immediately — the client will poll /status from here.
     return JobUploadResponse(job_id=job.id, status=job.status)
 
+
+@router.get("/", response_model=list[JobListItem])
+def list_jobs(status: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Job).order_by(Job.created_at.desc())
+    if status is not None:
+        query = query.filter(Job.status == status)
+    jobs = query.all()
+
+    return [
+        JobListItem(
+            job_id=j.id,
+            status=j.status,
+            filename=j.filename,
+            created_at=j.created_at,
+        )
+        for j in jobs
+    ]
+
+
 @router.get("/{job_id}/status", response_model=JobStatusResponse)
 def get_job_status(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -79,7 +104,7 @@ def get_job_status(job_id: str, db: Session = Depends(get_db)):
     )
 
 
-@router.get("/{job_id}/results")
+@router.get("/{job_id}/results", response_model=JobResultsResponse)
 def get_job_results(job_id: str, db: Session = Depends(get_db)):
     job = db.query(Job).filter(Job.id == job_id).first()
     if job is None:
@@ -123,10 +148,14 @@ def get_job_results(job_id: str, db: Session = Depends(get_db)):
             entry["total_amount"] += t["amount"]
         entry["count"] += 1
 
-    category_breakdown = [
-        {"category": cat, "total_amount": round(data["total_amount"], 2), "count": data["count"]}
-        for cat, data in breakdown.items()
-    ]
+    category_breakdown = sorted(
+        [
+            {"category": cat, "total_amount": round(data["total_amount"], 2), "count": data["count"]}
+            for cat, data in breakdown.items()
+        ],
+        key=lambda c: c["total_amount"],
+        reverse=True,
+    )
 
     summary = db.query(JobSummary).filter(JobSummary.job_id == job.id).first()
     summary_out = None

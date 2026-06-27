@@ -20,13 +20,19 @@ def normalize_date(raw_date: str) -> str | None:
 
     # DD-MM-YYYY: dash-separated, first segment is day (1-2 digits).
     if "-" in raw_date:
-        dt = datetime.strptime(raw_date, "%d-%m-%Y")
-        return dt.strftime("%Y-%m-%d")
+        try:
+            dt = datetime.strptime(raw_date, "%d-%m-%Y")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            return None
 
     # YYYY/MM/DD: slash-separated, year first.
     if "/" in raw_date:
-        dt = datetime.strptime(raw_date, "%Y/%m/%d")
-        return dt.strftime("%Y-%m-%d")
+        try:
+            dt = datetime.strptime(raw_date, "%Y/%m/%d")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            return None
 
     return None
 

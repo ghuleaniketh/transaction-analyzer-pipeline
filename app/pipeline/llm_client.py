@@ -1,9 +1,20 @@
 import json
-from google import genai
 
 from app.config import settings
 
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        try:
+            from google import genai
+        except ModuleNotFoundError as exc:
+            raise RuntimeError("google-genai is required for LLM operations") from exc
+
+        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _client
 
 VALID_CATEGORIES = [
     "Food", "Shopping", "Travel", "Transport",
@@ -39,6 +50,7 @@ from 0 to {len(items) - 1} with no gaps and no omissions, like:
 No other text, no markdown formatting, just the raw JSON array.
 """
 
+    client = _get_client()
     response = client.models.generate_content(
         model=settings.GEMINI_MODEL,
         contents=prompt,
@@ -96,6 +108,7 @@ Write a JSON object with exactly these fields:
 Respond with ONLY the raw JSON object, no markdown, no other text.
 """
 
+    client = _get_client()
     response = client.models.generate_content(
         model=settings.GEMINI_MODEL,
         contents=prompt,
