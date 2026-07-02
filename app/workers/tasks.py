@@ -8,13 +8,6 @@ from app.pipeline.pipeline_runner import run_pipeline
 
 
 def process_job(job_id: str, csv_content: str):
-    """
-    Real worker task: runs the full pipeline on the uploaded CSV, persists
-    cleaned Transaction rows and a JobSummary, and updates the Job's status.
-    LLM-level failures are already handled inside run_pipeline (rows fall back
-    to 'Uncategorised', summary falls back to a minimal default) — this function
-    only needs to handle truly unrecoverable failures, e.g. an unparseable CSV.
-    """
     db = SessionLocal()
     try:
         job = db.query(Job).filter(Job.id == job_id).first()

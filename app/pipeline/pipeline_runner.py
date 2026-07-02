@@ -14,15 +14,6 @@ from app.pipeline.retry import retry_with_backoff
 
 
 def run_pipeline(csv_content: str) -> dict:
-    """
-    Runs the full processing pipeline on raw CSV text and returns a dict with:
-      - row_count_raw: row count before any cleaning
-      - row_count_clean: row count after dedup
-      - transactions: list of fully cleaned/enriched row dicts
-      - summary: dict from generate_summary (totals, top merchants, narrative, risk_level)
-    Never raises on LLM failures — those are caught and the relevant rows/summary
-    fall back to a safe default, per the spec's "do not fail the entire job" requirement.
-    """
     rows = parse_csv(csv_content)
     row_count_raw = len(rows)
 
@@ -31,7 +22,6 @@ def run_pipeline(csv_content: str) -> dict:
 
     rows = fill_missing_txn_id(rows)
 
-    # Field-level cleaning (category intentionally excluded here — handled after LLM classification).
     for row in rows:
         row["date"] = normalize_date(row.get("date", ""))
         row["amount"] = strip_currency_symbol(row.get("amount", ""))
@@ -41,12 +31,10 @@ def run_pipeline(csv_content: str) -> dict:
         row["anomaly_reason"] = None
         row["llm_failed"] = False
 
-    # Anomaly detection needs cleaned amount/currency to work correctly.
     rows = detect_statistical_outliers(rows)
     rows = detect_currency_mismatch(rows)
     anomaly_count = sum(1 for r in rows if r["is_anomaly"])
 
-    # LLM classification: only rows genuinely missing a category, batched in one call.
     uncategorized = [r for r in rows if not (r.get("category") or "").strip()]
 
     if uncategorized:
@@ -57,12 +45,9 @@ def run_pipeline(csv_content: str) -> dict:
                 if txn_id in classifications:
                     row["category"] = classifications[txn_id]
         except Exception:
-            # All retries exhausted — mark these rows as llm_failed, fall back below.
             for row in uncategorized:
                 row["llm_failed"] = True
 
-    # Fallback: anything still missing a category (LLM failure, or a row the LLM
-    # didn't return) gets 'Uncategorised' rather than left blank.
     for row in rows:
         row["category"] = fill_missing_category(row.get("category", ""))
 

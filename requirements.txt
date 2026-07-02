@@ -7,5 +7,4 @@ rq
 python-multipart
 pydantic-settings
 alembic
-pandas
 google-genai

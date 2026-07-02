@@ -18,7 +18,7 @@ class JobStatusResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    summary: Optional[dict] = None  # populated only when status == "completed"
+    summary: Optional[dict] = None  
 
 
 class JobListItem(BaseModel):
